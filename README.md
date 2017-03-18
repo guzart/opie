@@ -1,5 +1,7 @@
 # Opie
 
+[![Build Status](https://travis-ci.org/guzart/opie.svg?branch=master)](https://travis-ci.org/guzart/opie)
+
 TODO: describe your gem
 
 ## Installation
