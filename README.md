@@ -1,6 +1,10 @@
 # Opie
 
 [![Build Status](https://travis-ci.org/guzart/opie.svg?branch=master)](https://travis-ci.org/guzart/opie)
+[![codecov](https://codecov.io/gh/guzart/opie/branch/master/graph/badge.svg)](https://codecov.io/gh/guzart/opie)
+[![Code Climate](https://codeclimate.com/github/guzart/opie/badges/gpa.svg)](https://codeclimate.com/github/guzart/opie)
+[![Gem Version](https://badge.fury.io/rb/opie.svg)](https://badge.fury.io/rb/opie)
+
 
 TODO: describe your gem
 
