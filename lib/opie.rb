@@ -1,5 +1,3 @@
-require "opie/version"
-
 module Opie
-  # Your code goes here...
+  require 'opie/version'
 end
