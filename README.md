@@ -188,23 +188,26 @@ end
 
 ## API
 
-_Tentative API_
-
 The `Opie::Operation` API:
   * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
+  * `#success? -> Boolean` indicates  whether the operation was successful
+  * `#failure? -> Boolean` indicates  whether the operation was a failure
+  * `#error -> Hash` the erorr if the operation is a `failure?`
+  * `#output -> *` if succcessful, it returns the operation final output
+  validation error
+
+Internal API:
+  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
+
+_Tentative API_
+
   * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
   * `::dependencies(Lambda) -> void` sets the default structure used to resolve dependencies
   * `#resolve(key: String) -> *` returns the dependency registered with the given key
-  * `#success? -> Boolean` indicates  whether the operation was successful
-  * `#output -> *` if succcessful, it returns the operation final output
-  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
-  * `#failure? -> Boolean` indicates  whether the operation was a failure
-  * `#error_type -> Symbol` return the failure error type 
-  * `#errors -> Array<JSONAPIError>` returns the operation JSONAPI compatible errors
+  * `#errors -> Array<Opie::Error>` returns the operation JSONAPI compatible errors
   * `#internal_error -> void` sets the operation error_type and errors to indicate an internal error
   * `#not_found_error -> void` sets the operation error_type and errors to indicate a resource not found error
   * `#validation_error(errors: Hash) -> void` sets the operation error_type and errors to indicate a 
-  validation error
 
 ## Installation
 

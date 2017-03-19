@@ -62,6 +62,42 @@ RSpec.describe Opie::Operation do
     end
   end
 
+  describe '#success?' do
+    it 'returns true when no steps fail' do
+      add_step(:alpha) { |_| nil }
+      add_step(:beta) { |_| nil }
+
+      result = run_operation
+      expect(result).to be_success
+    end
+
+    it 'returns false when an step fails' do
+      add_step(:alpha) { |_| nil }
+      add_failed_step(:beta)
+
+      result = run_operation
+      expect(result).not_to be_success
+    end
+  end
+
+  describe '#failure?' do
+    it 'returns true when a steps fail' do
+      add_step(:alpha) { |_| nil }
+      add_failed_step(:beta) { |_| nil }
+
+      result = run_operation
+      expect(result).to be_failure
+    end
+
+    it 'returns false when no step fails' do
+      add_step(:alpha) { |_| nil }
+      add_step(:beta)
+
+      result = run_operation
+      expect(result).not_to be_failure
+    end
+  end
+
   describe 'helper methods' do
     describe '#failure' do
       it 'is a private method' do
@@ -105,24 +141,6 @@ RSpec.describe Opie::Operation do
         run_operation
         expect(operation).not_to be_success
       end
-    end
-  end
-
-  describe '#success?' do
-    it 'returns true when no steps fail' do
-      add_step(:alpha) { |_| nil }
-      add_step(:beta) { |_| nil }
-
-      result = run_operation
-      expect(result).to be_success
-    end
-
-    it 'returns false when an step fails' do
-      add_step(:alpha) { |_| nil }
-      add_failed_step(:beta)
-
-      result = run_operation
-      expect(result).not_to be_success
     end
   end
 
