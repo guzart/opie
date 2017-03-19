@@ -8,6 +8,15 @@ module Opie
 
     def call(input = nil)
       execute_steps(input)
+      self
+    end
+
+    def failure?
+      !success?
+    end
+
+    def success?
+      error.nil?
     end
 
     class << self

@@ -46,6 +46,10 @@ RSpec.describe Opie::Operation do
 
       operation.call('hello')
     end
+
+    it 'returns the newly created instance' do
+      expect(operation.call('hello')).to be_an_instance_of(operation_klass)
+    end
   end
 
   describe '::call' do
@@ -87,8 +91,38 @@ RSpec.describe Opie::Operation do
 
       it 'optionally takes error data' do
         add_step(:alpha) { |_input| failure(:oopsy) }
-        expect { run_operation }.not_to raise_error(ArgumentError)
+        expect { run_operation }.not_to raise_error
       end
+
+      it 'makes #failure? return true' do
+        add_step(:alpha) { |_input| failure(:oopsy) }
+        run_operation
+        expect(operation).to be_failure
+      end
+
+      it 'makes #success? return false' do
+        add_step(:alpha) { |_input| failure(:oopsy) }
+        run_operation
+        expect(operation).not_to be_success
+      end
+    end
+  end
+
+  describe '#success?' do
+    it 'returns true when no steps fail' do
+      add_step(:alpha) { |_| nil }
+      add_step(:beta) { |_| nil }
+
+      result = run_operation
+      expect(result).to be_success
+    end
+
+    it 'returns false when an step fails' do
+      add_step(:alpha) { |_| nil }
+      add_failed_step(:beta)
+
+      result = run_operation
+      expect(result).not_to be_success
     end
   end
 
@@ -109,8 +143,8 @@ RSpec.describe Opie::Operation do
   end
 
   def add_failed_step(name)
-    add_step(name) do
-      [Opie::Operation::FAIL]
+    add_step(name) do |_|
+      failure(:oops)
     end
   end
 
