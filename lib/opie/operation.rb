@@ -4,6 +4,8 @@ module Opie
   class Operation
     FAIL = '__STEP_FAILED__'.freeze
 
+    attr_reader :error
+
     def call(input = nil)
       execute_steps(input)
     end
@@ -21,9 +23,6 @@ module Opie
         @steps ||= []
       end
 
-      def failure(name)
-      end
-
       private
 
       def add_step(name)
@@ -39,6 +38,10 @@ module Opie
       self.class.step_list.each do |name|
         arg = public_send(name, arg)
       end
+    end
+
+    def failure(type, data = nil)
+      @error = { type: type, data: data }
     end
   end
 end

@@ -58,6 +58,40 @@ RSpec.describe Opie::Operation do
     end
   end
 
+  describe 'helper methods' do
+    describe '#failure' do
+      it 'is a private method' do
+        expect(operation).not_to respond_to(:failure)
+      end
+
+      it 'assigns the first parameter as the error[:type]' do
+        add_step(:alpha) do |_input|
+          failure(:not_found)
+        end
+
+        run_operation
+        expect(operation.error[:type]).to eq(:not_found)
+      end
+
+      it 'assigns the second parameter as the error[:data]' do
+        add_step(:alpha) { |_input| failure(:who_cares, 'This is a really bad error') }
+
+        run_operation
+        expect(operation.error[:data]).to eq('This is a really bad error')
+      end
+
+      it 'requires an error type' do
+        add_step(:alpha) { |_input| failure }
+        expect { run_operation }.to raise_error(ArgumentError)
+      end
+
+      it 'optionally takes error data' do
+        add_step(:alpha) { |_input| failure(:oopsy) }
+        expect { run_operation }.not_to raise_error(ArgumentError)
+      end
+    end
+  end
+
   # HELPERS
 
   # Defines a method in the Operation class
