@@ -2,58 +2,43 @@ require 'dry-container'
 
 module Opie
   class Operation
-    attr_reader :container
+    FAIL = '__STEP_FAILED__'.freeze
 
-    def initialize(params = {}, dependencies = {})
-      @container = Dry::Container.new
-      @container.register('params', params)
-      dependencies.each { |k, v| @container.register(k, v) }
+    def call(input = nil)
+      execute_steps(input)
     end
 
     class << self
-      def call(*args)
-        instance = self.new(*args)
-        instance.send(:execute_steps, step_list)
-        instance
+      def call(input = nil)
+        new.call(input)
       end
 
-      def step(step)
-        add_step(step)
-      end
-
-      private
-
-      def add_step(value)
-        @steps ||= []
-        @steps << value
+      def step(name)
+        add_step(name)
       end
 
       def step_list
         @steps ||= []
       end
-    end
 
-    def fail
-      'fail'
-    end
+      def failure(name)
+      end
 
-    # def []=(key, value)
-    #   container.register(key, value)
-    # end
-    # result, container
+      private
 
-    def success?
-      !failure?
-    end
-
-    def failure?
-      @failure
+      def add_step(name)
+        @steps ||= []
+        @steps << name
+      end
     end
 
     private
 
-    def execute_steps(steps)
-      @failure = steps.find { |m| send(m) == 'fail' }
+    def execute_steps(input)
+      arg = input
+      self.class.step_list.each do |name|
+        arg = public_send(name, arg)
+      end
     end
   end
 end

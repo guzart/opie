@@ -1,96 +1,87 @@
 require 'spec_helper'
 
 RSpec.describe Opie::Operation do
-  let(:operation) { Class.new(Opie::Operation) }
-  let(:op) { operation.new }
+  let(:operation_klass) { Class.new(Opie::Operation) }
+  let(:operation) { operation_klass.new }
 
   before(:each) do
-    allow(operation).to receive(:new).and_return(op)
+    allow(operation_klass).to receive(:new).and_return(operation)
   end
 
-  describe '::new' do
-    it 'registers the given parameters to the container "params"' do
-      op = Opie::Operation.new(my_param: 'hello')
-      expect(op.container['params'][:my_param]).to eq('hello')
+  describe '::step' do
+    it 'defines a method to be called when running the operation' do
+      add_operation_method(:alpha)
+
+      operation_klass.step(:alpha)
+      expect(operation).to receive(:alpha)
+
+      run_operation
+    end
+  end
+
+  describe '#call' do
+    it 'uses the first argument as the parameter for the first step' do
+      add_step(:alpha)
+
+      expect(operation).to receive(:alpha).with(message: 'hello')
+
+      operation.call(message: 'hello')
     end
 
-    it 'registers the given dependencies to the container' do
-      op = Opie::Operation.new({}, other_dependency: 'mickey')
-      expect(op.container['other_dependency']).to eq('mickey')
+    it 'executes the step methods in the order they are defined' do
+      add_step(:beta)
+      add_step(:alpha)
+
+      expect(operation).to receive(:beta).ordered
+      expect(operation).to receive(:alpha).ordered
+
+      operation.call
+    end
+
+    it 'uses the output of one step as the input for the next' do
+      add_step(:alpha) { |input| input + ' world' }
+      add_step(:beta) { |msg| msg + '!' }
+
+      expect(operation).to receive(:beta).with('hello world')
+
+      operation.call('hello')
     end
   end
 
   describe '::call' do
-    it 'initializes a new instance' do
-      params = { boo: 'ya' }
-      deps = { hello: 'hola' }
-      expect(Opie::Operation).to receive(:new).with(params, deps).and_return(op)
-      Opie::Operation.call(params, deps)
-    end
+    it 'initializes a new instance and invokes #call' do
+      operation = double('operation')
+      expect(operation_klass).to receive(:new).and_return(operation)
+      expect(operation).to receive(:call)
 
-    it 'executes the instance methods defined in ::step' do
-      operation.class_exec { def hello() 'Hello' end }
-
-      operation.step(:hello)
-      expect(op).to receive(:hello)
-      operation.call()
-    end
-
-    it 'stops step execution if one step returns FAIL' do
-      operation.class_exec {
-        def one() nil end
-        def two() container.register('2', 2) end
-        def three() fail end
-        def four() container.register('4', 4) end
-      }
-
-      operation.step(:one)
-      operation.step(:two)
-      operation.step(:three)
-      operation.step(:four)
-      operation.call
-
-      expect(op.container['2']).to eq(2)
-      expect(op.container.key?('4')).to be false
-    end
-
-    it 'executes the steps in the defined order' do
-      operation.class_exec {
-        def two() container['out_count'] << 2 end
-        def one() container.register('out_count', []) end
-      }
-
-
-      operation.step(:one)
-      operation.step(:two)
-      operation.call()
-      expect(op.container['out_count']).to eq([2])
+      operation_klass.call
     end
   end
 
-  describe 'success?' do
-    it 'returns false if a step fails' do
-      operation.class_exec {
-        def one() fail end
-        def two() 'wow' end
-      }
+  # HELPERS
 
-      operation.step(:one)
-      operation.step(:two)
-      operation.call()
-      expect(op).not_to be_success
+  # Defines a method in the Operation class
+  def add_operation_method(name, &block)
+    block ||= ->(_) { nil }
+    operation_klass.class_exec do
+      define_method(name, &block)
     end
+  end
 
-    it 'returns true if all steps succeed' do
-      operation.class_exec {
-        def one() 'yeah' end
-        def two() 'awesome' end
-      }
+  # Adds a step to the operation with an optional definition.
+  def add_step(name, &block)
+    operation_klass.step(name)
+    add_operation_method(name, &block)
+  end
 
-      operation.step(:one)
-      operation.step(:two)
-      operation.call
-      expect(op).to be_success
+  def add_failed_step(name)
+    add_step(name) do
+      [Opie::Operation::FAIL]
     end
+  end
+
+  # Runs the contextual operation
+  def run_operation(*args)
+    operation_klass.call(*args)
   end
 end
