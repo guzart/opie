@@ -5,52 +5,62 @@
 [![Code Climate](https://codeclimate.com/github/guzart/opie/badges/gpa.svg)](https://codeclimate.com/github/guzart/opie)
 [![Gem Version](https://badge.fury.io/rb/opie.svg)](https://badge.fury.io/rb/opie)
 
-
-TODO: describe your gem
-
-## Installation
-
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'opie'
-```
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install opie
+**Opie gives you a simple API for creating Operations using the
+[Railsway oriented programming](https://vimeo.com/113707214) paradigm.**
 
 ## Usage
 
-_Tentative API_
-
-The `Opie::Operation` API:
-  * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
-  * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
-  * `::dependencies(Lambda) -> void` sets the default structure used to resolve dependencies
-  * `#resolve(key: String) -> *` returns the dependency registered with the given key
-  * `#success? -> Boolean` indicates  whether the operation was successful
-  * `#output -> *` if succcessful, it returns the operation final output
-  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
-  * `#failure? -> Boolean` indicates  whether the operation was a failure
-  * `#error_type -> Symbol` return the failure error type 
-  * `#errors -> Array<JSONAPIError>` returns the operation JSONAPI compatible errors
-  * `#internal_error -> void` sets the operation error_type and errors to indicate an internal error
-  * `#not_found_error -> void` sets the operation error_type and errors to indicate a resource not found error
-  * `#validation_error(errors: Hash) -> void` sets the operation error_type and errors to indicate a 
-  validation error
-
-## Example
-
-Imagine yourself in the context of a [habit tracker](https://github.com/isoron/uhabits).
+**Simple Usage:**
 
 ```ruby
-# Let's add a habit we want to track
+class Todos::CompleteTodo < Opie::Operation
+  step :find_todo
+  step :mark_as_complete
+  failure :handle_failure
+
+  def find_todo(todo_id)
+    todo = Todo.find_by(id: todo_id)
+    return fail(:not_found) unless todo
+    todo
+  end
+
+  def mark_as_complete(todo)
+    success = todo.update(completed_at: Time.zone.now)
+    return fail(:update) unless success
+    todo
+  end
+
+  def handle_failure(error_type)
+    case error_type
+      when :not_found then "Could not find the Todo with #{input} id"
+      when :update then 'We were unable to make the changes to your todo'
+      else 'There was an unexpected error, sorry for the inconvenience'
+    end
+  end
+end
+
+class TodosController < ApplicationController
+  def complete
+    result = Todos::CompleteTodo.(params[:id])
+    if result.success?
+      render status: :created, json: result.output
+    else
+      render status: :bad_request, json: result.failure
+    end
+  end
+end
+```
+
+**Real world example:**
+
+Imagine yourself in the context of a [habit tracker](https://github.com/isoron/uhabits), wanting to 
+add a new habit to track.
+
+```ruby
+# app/controllers/habits_controller.rb
+
 class HabitsController < ApplicationController
+  # POST /habits
   def create
     # run the `operation` – since it's a modification we can call it a `command`
     result = People::AddHabit.(habit_params)
@@ -85,7 +95,11 @@ class HabitsController < ApplicationController
     }
   end
 end
+```
 
+And now the code that defines the operation
+
+```ruby
 # application-wide dependencies
 class HabitTrackerContainer
   extends Dry::Container::Mixin
@@ -172,11 +186,54 @@ module People
 end
 ```
 
+## API
+
+_Tentative API_
+
+The `Opie::Operation` API:
+  * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
+  * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
+  * `::dependencies(Lambda) -> void` sets the default structure used to resolve dependencies
+  * `#resolve(key: String) -> *` returns the dependency registered with the given key
+  * `#success? -> Boolean` indicates  whether the operation was successful
+  * `#output -> *` if succcessful, it returns the operation final output
+  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
+  * `#failure? -> Boolean` indicates  whether the operation was a failure
+  * `#error_type -> Symbol` return the failure error type 
+  * `#errors -> Array<JSONAPIError>` returns the operation JSONAPI compatible errors
+  * `#internal_error -> void` sets the operation error_type and errors to indicate an internal error
+  * `#not_found_error -> void` sets the operation error_type and errors to indicate a resource not found error
+  * `#validation_error(errors: Hash) -> void` sets the operation error_type and errors to indicate a 
+  validation error
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+gem 'opie'
+```
+
+And then execute:
+
+```bash
+$ bundle
+```
+
+Or install it yourself as:
+
+```bash
+$ gem install opie
+```
+
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests.
+You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update
+the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for
+the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
 ## Contributing
 
