@@ -28,12 +28,25 @@ Or install it yourself as:
 
 TODO: Write usage instructions here
 
+_Tentative API_
+
+The `Opie::Operation` API:
+  * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
+  * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
+  * `#success? -> Boolean` indicates  whether the operation was successful
+  * `#output -> *` if succcessful, it returns the operation final output
+  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
+  * `#failure? -> Boolean` indicates  whether the operation was a failure
+  * `#error_type -> Symbol` return the failure error type 
+  * `#errors -> Array<JSONAPIError>` returns the operation JSONAPI compatible errors
+  * `#internal_error -> void` sets the operation error_type and errors to indicate an internal error
+  * `#not_found_error -> void` sets the operation error_type and errors to indicate a resource not found error
+  * `#validation_error(errors: Hash) -> void` sets the operation error_type and errors to indicate a 
+  validation error
+
 ## Example
 
-
 Imagine yourself in the context of a [habit tracker](https://github.com/isoron/uhabits).
-
-_Tentative API_
 
 ```ruby
 # Let's add a habit we want to track
@@ -147,7 +160,7 @@ module Humans
         # opie method for handling Dry::Struct.Validation errors
         when :validation then validation_errors(error)
         # yes, another opie method for handling resource finding errors
-        when :not_found then record_not_found_error
+        when :not_found then not_found_error
         # yet, another opie method for internal errors
         else internal_error
       end
@@ -155,19 +168,6 @@ module Humans
   end
 end
 ```
-
-The `Opie::Operation` API:
-  * `::failure(method_name: Symbol) -> void`
-  * `::step(method_name: Symbol) -> void`
-  * `#success? -> Boolean`
-  * `#output -> *`
-  * `#failure? -> Boolean`
-  * `#error_type -> Symbol`
-  * `#errors -> Array<JSONAPIError>`
-  * `#fail(error_type: Symbol, error: Error) -> OpieFailure`
-  * `#internal_error -> void`
-  * `#record_not_found_error -> void`
-  * `#validation_error(errors: Hash) -> void`
 
 ## Development
 
