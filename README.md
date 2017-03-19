@@ -53,7 +53,7 @@ Imagine yourself in the context of a [habit tracker](https://github.com/isoron/u
 class HabitsController < ApplicationController
   def create
     # run the `operation` – since it's a modification we can call it a `command`
-    result = Humans::AddHabit.(habit_params)
+    result = People::AddHabit.(habit_params)
 
     # render response based on operation result
     if result.success?
@@ -77,7 +77,7 @@ class HabitsController < ApplicationController
   # simulate parameters came from a Http request
   def habit_params
     {
-      human_id: 2,
+      person_id: 2,
       name: 'Excercise',
       description: 'Did you excercise for at least 15 minutes today?',
       frequency: :three_times_per_week,
@@ -91,7 +91,7 @@ class HabitTrackerContainer
   extends Dry::Container::Mixin
 
   register 'repositories.habit', HabitRepository.new
-  register 'repositories.human', HumanRepository.new
+  register 'repositories.person', PersonRepository.new
   register 'service_bus', ServiceBus.new
 end
 
@@ -101,7 +101,7 @@ class ApplicationOperation < Opie::Operation
   dependencies -> { HabitTrackerContainer }
 end
 
-module Humans
+module People
   # we define a validation schema for our input
   AddHabitSchema = Dry::Schema.Validation do
     configure do
@@ -111,7 +111,7 @@ module Humans
       end
     end
     
-    required(:human_id).filled(:int?, gt?: 0)
+    required(:person_id).filled(:int?, gt?: 0)
     required(:name).filled(:str?)
     required(:description).maybe(:str?)
     required(:frequency).filled(:freq?)
@@ -122,7 +122,7 @@ module Humans
   class AddHabit < ApplicationOperation
     # first step receives ::new first argument, then the output of the step is the argument of the next step
     step :validate
-    step :find_human
+    step :find_person
     step :persist_habit
     step :send_event
     failure :handle_failure # define the method that handles the sad path
@@ -134,11 +134,11 @@ module Humans
       schema.output
     end
 
-    # if it's valid then find the human (tenant)
-    def find_human(params)
-      human = resolve('repositories.human').find(params[:human_id])
-      return fail(:repository, StandardError.new('We could not find your account')) unless human
-      params.merge(human: human)
+    # if it's valid then find the person (tenant)
+    def find_person(params)
+      person = resolve('repositories.person').find(params[:person_id])
+      return fail(:repository, StandardError.new('We could not find your account')) unless person
+      params.merge(person: person)
     end
 
     # persist the new habit
