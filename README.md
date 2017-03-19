@@ -31,6 +31,8 @@ _Tentative API_
 The `Opie::Operation` API:
   * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
   * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
+  * `::dependencies(Lambda) -> void` sets the default structure used to resolve dependencies
+  * `#resolve(key: String) -> *` returns the dependency registered with the given key
   * `#success? -> Boolean` indicates  whether the operation was successful
   * `#output -> *` if succcessful, it returns the operation final output
   * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
@@ -51,20 +53,20 @@ Imagine yourself in the context of a [habit tracker](https://github.com/isoron/u
 class HabitsController < ApplicationController
   def create
     # run the `operation` – since it's a modification we can call it a `command`
-    result = Humans::AddHabit.(habit_params, dependencies) # optionally, we can specify dependencies
+    result = Humans::AddHabit.(habit_params)
 
     # render response based on operation result
     if result.success?
       render status: :created, json: result.output
     else
-      render status: http_status(result.error_type), json: { errors: result.errors }
+      render status: error_http_status(result.error_type), json: { errors: result.errors }
     end
   end
 
   private
 
   # the HTTP status depends on the error type, which separating the domain from the infrastructure
-  def http_status(error_type)
+  def error_http_status(error_type)
     case(error_type) 
     when :validation then :unprocessable_entity 
     when :not_found then :not_found
@@ -82,20 +84,26 @@ class HabitsController < ApplicationController
       color: 'DeepPink'
     }
   end
+end
 
-  # simulate we have some application-wide dependencies
-  def dependencies
-    {
-      'repositories.habit': HabitRepository.new,
-      'repositories.human': HumanRepository.new,
-      'service_bus': ServiceBus.new
-    }
-  end
+# application-wide dependencies
+class HabitTrackerContainer
+  extends Dry::Container::Mixin
+
+  register 'repositories.habit', HabitRepository.new
+  register 'repositories.human', HumanRepository.new
+  register 'service_bus', ServiceBus.new
+end
+
+# base class for all project operations
+class ApplicationOperation < Opie::Operation
+  # default container to used for dependency injection, more flexible than ruby's global namespace
+  dependencies -> { HabitTrackerContainer }
 end
 
 module Humans
   # we define a validation schema for our input
-  Schema = Dry::Schema.Validation do
+  AddHabitSchema = Dry::Schema.Validation do
     configure do
       # custom predicate for frequency
       def freq?(value)
@@ -110,11 +118,8 @@ module Humans
     required(:color).filled(:str?)
   end
 
-  # the operation logic starts
-  class AddHabit < Opie::Operation
-    # project's dependency injection, more flexible than ruby's global namespace
-    include HabitTrackerDependencies 
-
+  # the operation logic starts, by inheriting from ApplicationOperation we get default dependencies
+  class AddHabit < ApplicationOperation
     # first step receives ::new first argument, then the output of the step is the argument of the next step
     step :validate
     step :find_human
@@ -124,7 +129,7 @@ module Humans
 
     # receives the first input
     def validate(params)
-      schema = Schema.(params)
+      schema = AddHabitSchema.(params)
       return fail(:validation, schema.errors) if schema.failure?
       schema.output
     end
