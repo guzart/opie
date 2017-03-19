@@ -43,7 +43,7 @@ module Opie
     # result, container
 
     def success?
-      !@failure
+      !failure?
     end
 
     def failure?
