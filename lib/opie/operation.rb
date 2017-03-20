@@ -59,7 +59,7 @@ module Opie
     end
 
     def fail(type, data = nil)
-      @failure = { type: type, data: data }
+      @failure = Failure.new(type, data)
     end
   end
 end

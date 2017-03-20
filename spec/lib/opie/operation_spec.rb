@@ -74,7 +74,7 @@ RSpec.describe Opie::Operation do
   end
 
   describe '#success?' do
-    it 'returns true when no steps fail' do
+    it 'returns true when all steps are successful' do
       add_step(:alpha) { |_| nil }
       add_step(:beta) { |_| nil }
 
@@ -100,7 +100,7 @@ RSpec.describe Opie::Operation do
       expect(result).to be_failure
     end
 
-    it 'returns false when no step fails' do
+    it 'returns false when none of the step fail' do
       add_step(:alpha) { |_| nil }
       add_step(:beta)
 
@@ -129,9 +129,9 @@ RSpec.describe Opie::Operation do
 
   describe '#failures' do
     it 'returns an array of the operation failures' do
-      failure = { type: :oh_no, data: 'boo hoo' }
+      failure = Opie::Failure.new(:oh_no, 'boo hoo')
       add_step(:alpha) { |_| 'wow' }
-      add_step(:beta) { |_| fail(failure[:type], failure[:data]) }
+      add_step(:beta) { |_| fail(failure.type, failure.data) }
 
       expect(run_operation.failures).to eq([failure])
     end
@@ -148,20 +148,20 @@ RSpec.describe Opie::Operation do
         expect(operation).not_to respond_to(:fail)
       end
 
-      it 'assigns the first parameter as the failure[:type]' do
+      it 'assigns the first parameter as the failure.type' do
         add_step(:alpha) do |_input|
           fail(:not_found)
         end
 
         run_operation
-        expect(operation.failure[:type]).to eq(:not_found)
+        expect(operation.failure.type).to eq(:not_found)
       end
 
-      it 'assigns the second parameter as the failure[:data]' do
+      it 'assigns the second parameter as the failure.data' do
         add_step(:alpha) { |_input| fail(:who_cares, 'This is a really bad error') }
 
         run_operation
-        expect(operation.failure[:data]).to eq('This is a really bad error')
+        expect(operation.failure.data).to eq('This is a really bad error')
       end
 
       it 'requires a error type' do
