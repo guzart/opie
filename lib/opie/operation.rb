@@ -4,7 +4,7 @@ module Opie
   class Operation
     FAIL = '__STEP_FAILED__'.freeze
 
-    attr_reader :error, :output
+    attr_reader :failure, :output
 
     def call(input = nil)
       execute_steps(input)
@@ -16,7 +16,11 @@ module Opie
     end
 
     def success?
-      error.nil?
+      failure.nil?
+    end
+
+    def failures
+      [failure].compact
     end
 
     class << self
@@ -54,8 +58,8 @@ module Opie
       @output = next_input if success?
     end
 
-    def failure(type, data = nil)
-      @error = { type: type, data: data }
+    def fail(type, data = nil)
+      @failure = { type: type, data: data }
     end
   end
 end
