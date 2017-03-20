@@ -16,11 +16,10 @@
 class Todos::CompleteTodo < Opie::Operation
   step :find_todo
   step :mark_as_complete
-  failure :handle_failure
 
   def find_todo(todo_id)
     todo = Todo.find_by(id: todo_id)
-    return fail(:not_found) unless todo
+    return fail(:not_found, "Could not find the Todo using id: #{todo_id}") unless todo
     todo
   end
 
@@ -28,14 +27,6 @@ class Todos::CompleteTodo < Opie::Operation
     success = todo.update(completed_at: Time.zone.now)
     return fail(:update) unless success
     todo
-  end
-
-  def handle_failure(error_type)
-    case error_type
-      when :not_found then "Could not find the Todo with #{input} id"
-      when :update then 'We were unable to make the changes to your todo'
-      else 'There was an unexpected error, sorry for the inconvenience'
-    end
   end
 end
 
@@ -45,7 +36,17 @@ class TodosController < ApplicationController
     if result.success?
       render status: :created, json: result.output
     else
-      render status: :bad_request, json: result.failure
+      render status: :bad_request, json: { error: error_message(result) }
+    end
+  end
+
+  private
+
+  def error_message(failure)
+    case failure[:type]
+      when :not_found then failure[:data]
+      when :update then 'We were unable to make the changes to your todo'
+      else 'There was an unexpected error, sorry for the inconvenience'
     end
   end
 end
@@ -69,7 +70,7 @@ class HabitsController < ApplicationController
     if result.success?
       render status: :created, json: result.output
     else
-      render status: error_http_status(result.error_type), json: { errors: result.errors }
+      render status: error_http_status(result.failure[:type]), json: { errors: [result.failure] }
     end
   end
 
@@ -139,7 +140,6 @@ module People
     step :find_person
     step :persist_habit
     step :send_event
-    failure :handle_failure # define the method that handles the sad path
 
     # receives the first input
     def validate(params)
@@ -151,7 +151,7 @@ module People
     # if it's valid then find the person (tenant)
     def find_person(params)
       person = resolve('repositories.person').find(params[:person_id])
-      return fail(:repository, StandardError.new('We could not find your account')) unless person
+      return fail(:repository, 'We could not find your account') unless person
       params.merge(person: person)
     end
 
@@ -160,7 +160,7 @@ module People
       new_habit = Entities::Habit.new(params)
       resolve('repositories.habit').create(new_habit)
     rescue => error
-      fail(:persist_failed, error)
+      fail(:persist_failed, error.message)
     end
 
     # notify the world
@@ -169,18 +169,6 @@ module People
       resolve('service_bus').send(event)
     rescue => error
       fail(:event_failed, error)
-    end
-
-    # oopsy daisies handling
-    def handle_failure(type, error)
-      case (type)
-        # opie method for handling Dry::Struct.Validation errors
-        when :validation then validation_errors(error)
-        # yes, another opie method for handling resource finding errors
-        when :not_found then not_found_error
-        # yet, another opie method for internal errors
-        else internal_error
-      end
     end
   end
 end
@@ -197,7 +185,7 @@ The `Opie::Operation` API:
   validation error
 
 Internal API:
-  * `#failure(error_type: Symbol, error_data: *) -> Hash` 
+  * `#fail(error_type: Symbol, error_data: *) -> Hash` 
 
 _Tentative API_
 
