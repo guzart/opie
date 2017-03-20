@@ -13,6 +13,7 @@
 **Simple Usage:**
 
 ```ruby
+# Create an Operation for completing a Todo
 class Todos::CompleteTodo < Opie::Operation
   step :find_todo
   step :mark_as_complete
@@ -32,11 +33,12 @@ end
 
 class TodosController < ApplicationController
   def complete
+    # invoke the operation
     result = Todos::CompleteTodo.(params[:id])
-    if result.success?
-      render status: :created, json: result.output
+    if result.success? # if #success?
+      render status: :created, json: result.output # use output
     else
-      render status: :bad_request, json: { error: error_message(result) }
+      render status: :bad_request, json: { error: error_message(result.failure) } # otherwise use #failure
     end
   end
 
