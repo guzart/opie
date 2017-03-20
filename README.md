@@ -101,7 +101,7 @@ end
 And now the code that defines the operation
 
 ```ruby
-# application-wide dependencies
+# application-wide dependencies container
 class HabitTrackerContainer
   extends Dry::Container::Mixin
 
@@ -110,11 +110,8 @@ class HabitTrackerContainer
   register 'service_bus', ServiceBus.new
 end
 
-# base class for all project operations
-class ApplicationOperation < Opie::Operation
-  # default container to used for dependency injection, more flexible than ruby's global namespace
-  dependencies -> { HabitTrackerContainer }
-end
+# application-wide dependency injector
+Import = Dry::AutoInject(HabitTrackerContainer.new)
 
 module People
   # we define a validation schema for our input
@@ -133,9 +130,16 @@ module People
     required(:color).filled(:str?)
   end
 
-  # the operation logic starts, by inheriting from ApplicationOperation we get default dependencies
-  class AddHabit < ApplicationOperation
-    # first step receives ::new first argument, then the output of the step is the argument of the next step
+  # the operation logic starts
+  class AddHabit < Opie::Operation 
+    # inject dependencies, more flexible than ruby's global namespace
+    include Import[
+      habit_repo: 'repositories.habit',
+      person_repo: 'repositories.person',
+      service_bus: 'service_bus'
+    ]
+
+    # first step receives ::call first argument, then the output of the step is the argument of the next step
     step :validate
     step :find_person
     step :persist_habit
@@ -150,7 +154,7 @@ module People
 
     # if it's valid then find the person (tenant)
     def find_person(params)
-      person = resolve('repositories.person').find(params[:person_id])
+      person = person_repo.find(params[:person_id])
       return fail(:repository, 'We could not find your account') unless person
       params.merge(person: person)
     end
@@ -158,7 +162,7 @@ module People
     # persist the new habit
     def persist_habit(params)
       new_habit = Entities::Habit.new(params)
-      resolve('repositories.habit').create(new_habit)
+      habit_repo.create(new_habit)
     rescue => error
       fail(:persist_failed, error.message)
     end
@@ -166,7 +170,7 @@ module People
     # notify the world
     def send_event(habit)
       event = Habits::CreatedEvent.new(habit.attributes)
-      resolve('service_bus').send(event)
+      service_bus.send(event)
     rescue => error
       fail(:event_failed, error)
     end
@@ -177,10 +181,11 @@ end
 ## API
 
 The `Opie::Operation` API:
-  * `::step(method_name: Symbol) -> void` indicates a method that is executed in the operation sequence
+  * `::step(Symbol) -> void` indicates a method that is executed in the operation sequence
   * `#success? -> Boolean` indicates  whether the operation was successful
   * `#failure? -> Boolean` indicates  whether the operation was a failure
-  * `#error -> Hash` the erorr if the operation is a `failure?`
+  * `#failure -> Hash | nil` the erorr if the operation is a `failure?`, nil when it's a success
+  * `#failures -> Array<Hash> | nil` an array with all errors
   * `#output -> *` if succcessful, it returns the operation final output
   validation error
 
@@ -189,13 +194,9 @@ Internal API:
 
 _Tentative API_
 
-  * `::failure(method_name: Symbol) -> void` indicates the method that handles failures
-  * `::dependencies(Lambda) -> void` sets the default structure used to resolve dependencies
-  * `#resolve(key: String) -> *` returns the dependency registered with the given key
-  * `#errors -> Array<Opie::Error>` returns the operation JSONAPI compatible errors
-  * `#internal_error -> void` sets the operation error_type and errors to indicate an internal error
-  * `#not_found_error -> void` sets the operation error_type and errors to indicate a resource not found error
-  * `#validation_error(errors: Hash) -> void` sets the operation error_type and errors to indicate a 
+  * `::step(Array<Symbol>) -> void` a series of methods to be called in parallel
+  * `::step(Opie::Step) -> void` an enforcer of a step signature which helps to compose other steps
+  * `::failure(Symbol) -> void` indicates the method that handles failures
 
 ## Installation
 
