@@ -9,6 +9,7 @@ if ENV['CI'] == 'true'
 end
 
 require 'awesome_print'
+require 'byebug'
 require 'opie'
 require 'rspec'
 
