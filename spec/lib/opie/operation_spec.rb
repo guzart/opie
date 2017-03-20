@@ -50,6 +50,17 @@ RSpec.describe Opie::Operation do
     it 'returns the newly created instance' do
       expect(operation.call('hello')).to be_an_instance_of(operation_klass)
     end
+
+    it 'stops execution when a step fails' do
+      add_step(:alpha)
+      add_failed_step(:beta)
+      add_step(:charlie)
+
+      expect(operation).to receive(:beta).and_call_original
+      expect(operation).not_to receive(:charlie)
+
+      run_operation
+    end
   end
 
   describe '::call' do
@@ -95,6 +106,24 @@ RSpec.describe Opie::Operation do
 
       result = run_operation
       expect(result).not_to be_failure
+    end
+  end
+
+  describe '#output' do
+    it 'returns the return value of the last step' do
+      add_step(:alpha) { |_| 'wow' }
+      add_step(:beta) { |_| 'oh boy' }
+
+      result = run_operation
+      expect(result.output).to eq('oh boy')
+    end
+
+    it 'returns nil if the operation failed' do
+      add_step(:alpha) { |_| 'wow' }
+      add_failed_step(:beta)
+      add_step(:charlie) { |_| 'something else' }
+
+      expect(run_operation.output).to be_nil
     end
   end
 
