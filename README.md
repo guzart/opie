@@ -197,7 +197,7 @@ The `Opie::Operation` API:
   validation error
 
 Internal API:
-  * `#fail(error_type: Symbol, error: Error) -> OpieFailure` 
+  * `#failure(error_type: Symbol, error_data: *) -> Hash` 
 
 _Tentative API_
 
