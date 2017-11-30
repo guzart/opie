@@ -47,16 +47,20 @@ module Opie
 
       next_input = input
       step_list.find do |name|
-        next_step = method(name)
-        next_input = if next_input.is_a?(Array) && (next_step.arity == next_input.count || next_step.arity == -1)
-                       public_send(name, *next_input)
-                     else
-                       public_send(name, next_input)
-                     end
+        next_input = execute_step(name, next_input)
         failure?
       end
 
       @output = next_input if success?
+    end
+
+    def execute_step(name, input)
+      next_step = method(name)
+      if input.is_a?(Array) && (next_step.arity == input.count || next_step.arity == -1)
+        public_send(name, *input)
+      else
+        public_send(name, input)
+      end
     end
 
     def fail(type, data = nil)
