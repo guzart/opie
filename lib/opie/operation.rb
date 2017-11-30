@@ -1,9 +1,5 @@
-require 'dry-container'
-
 module Opie
   class Operation
-    FAIL = '__STEP_FAILED__'.freeze
-
     attr_reader :failure, :output
 
     def call(input = nil)
@@ -51,7 +47,12 @@ module Opie
 
       next_input = input
       step_list.find do |name|
-        next_input = public_send(name, next_input)
+        next_step = method(name)
+        next_input = if next_input.is_a?(Array) && (next_step.arity == next_input.count || next_step.arity == -1)
+                       public_send(name, *next_input)
+                     else
+                       public_send(name, next_input)
+                     end
         failure?
       end
 

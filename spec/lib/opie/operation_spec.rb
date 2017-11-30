@@ -47,6 +47,15 @@ RSpec.describe Opie::Operation do
       operation.call('hello')
     end
 
+    it 'unpacks returned on previous step array to the next step arguments' do
+      add_step(:alpha) { |input| [input, 'world'] }
+      add_step(:beta) { |arg1, arg2| "#{arg1} #{arg2}!" }
+
+      expect(operation).to receive(:beta).with('hello', 'world')
+
+      operation.call('hello')
+    end
+
     it 'returns the newly created instance' do
       expect(operation.call('hello')).to be_an_instance_of(operation_klass)
     end
