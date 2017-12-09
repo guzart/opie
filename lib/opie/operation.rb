@@ -2,8 +2,9 @@ module Opie
   class Operation
     attr_reader :failure, :output
 
-    def call(input = nil)
-      execute_steps(input)
+    def call(input = nil, &block)
+      execute_steps(input, &block)
+      yield self if block_given?
       self
     end
 
@@ -11,8 +12,16 @@ module Opie
       !success?
     end
 
+    def on_fail
+      yield failure if block_given? && failure?
+    end
+
     def success?
       failure.nil?
+    end
+
+    def on_success
+      yield output if block_given? && success?
     end
 
     def failures
@@ -20,8 +29,8 @@ module Opie
     end
 
     class << self
-      def call(input = nil)
-        new.call(input)
+      def call(input = nil, &block)
+        new.call(input, &block)
       end
 
       def step(name)

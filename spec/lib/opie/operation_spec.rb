@@ -80,6 +80,15 @@ RSpec.describe Opie::Operation do
 
       operation_klass.call
     end
+
+    it 'calls block with self as argument if block is given' do
+      add_step(:beta)
+      add_step(:alpha)
+
+      operation.call do |res|
+        expect(res).to be_a(described_class)
+      end
+    end
   end
 
   describe '#success?' do
@@ -193,6 +202,29 @@ RSpec.describe Opie::Operation do
         add_step(:alpha) { |_input| fail(:oopsy) }
         run_operation
         expect(operation).not_to be_success
+      end
+    end
+  end
+
+  describe '#on_fail' do
+    it 'calls given block with failure' do
+      failure = Opie::Failure.new(:oh_no, 'boo hoo')
+      add_step(:alpha) { |_| 'wow' }
+      add_step(:beta) { |_| fail(failure.type, failure.data) }
+
+      run_operation.on_fail do |error|
+        expect(error).to eq(failure)
+      end
+    end
+  end
+
+  describe '#on_success' do
+    it 'calls given block with output' do
+      add_step(:alpha) { |_| 'wow' }
+      add_step(:beta) { |_| 'output' }
+
+      run_operation.on_success do |output|
+        expect(output).to eq('output')
       end
     end
   end
