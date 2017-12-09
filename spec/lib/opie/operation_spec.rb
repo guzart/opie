@@ -47,6 +47,15 @@ RSpec.describe Opie::Operation do
       operation.call('hello')
     end
 
+    it 'unpacks returned on previous step array to the next step arguments' do
+      add_step(:alpha) { |input| [input, 'world'] }
+      add_step(:beta) { |arg1, arg2| "#{arg1} #{arg2}!" }
+
+      expect(operation).to receive(:beta).with('hello', 'world')
+
+      operation.call('hello')
+    end
+
     it 'returns the newly created instance' do
       expect(operation.call('hello')).to be_an_instance_of(operation_klass)
     end
@@ -70,6 +79,55 @@ RSpec.describe Opie::Operation do
       expect(operation).to receive(:call)
 
       operation_klass.call
+    end
+
+    it 'calls block with self as argument if block is given' do
+      add_step(:beta)
+      add_step(:alpha)
+
+      expect { |b| operation.call(&b) }.to yield_control.once
+
+      operation.call do |res|
+        expect(res).to be_a(described_class)
+      end
+    end
+
+    context 'with external operation as step' do
+      let(:other_operation_klass) { Class.new(Opie::Operation) }
+      let(:other_operation) { other_operation_klass.new }
+
+      before(:each) do
+        allow(other_operation_klass).to receive(:new).and_return(other_operation)
+      end
+
+      context 'with successful result from external operation' do
+        it 'calls external operations as steps' do
+          add_step(:alpha) { |input| input }
+          add_step(:alpha, other_operation_klass) { |input| "TEST" }
+
+          operation_klass.step(other_operation_klass)
+
+          expect(other_operation).to receive(:alpha).with('input')
+          run_operation('input')
+        end
+
+        it 'returns output' do
+          add_step(:alpha) { |input| input }
+          add_step(:alpha, other_operation_klass) { |input| "TEST" }
+          operation_klass.step(other_operation_klass)
+          expect(run_operation.output).to eq("TEST")
+        end
+      end
+
+      context 'with faled external operation' do
+        it 'returns failure' do
+          add_step(:alpha) { |input| input }
+          add_step(:alpha, other_operation_klass) { |_| fail(:error, 'reason') }
+          operation_klass.step(other_operation_klass)
+          expect(run_operation.failure.type).to eq(:error)
+          expect(run_operation.failure.data).to eq('reason')
+        end
+      end
     end
   end
 
@@ -188,20 +246,46 @@ RSpec.describe Opie::Operation do
     end
   end
 
+  describe '#on_fail' do
+    it 'calls given block with failure' do
+      failure = Opie::Failure.new(:oh_no, 'boo hoo')
+      add_step(:alpha) { |_| 'wow' }
+      add_step(:beta) { |_| fail(failure.type, failure.data) }
+
+      expect { |b| run_operation.on_fail(&b) }.to yield_control.once
+      run_operation.on_fail do |error|
+        expect(error).to eq(failure)
+      end
+    end
+  end
+
+  describe '#on_success' do
+    it 'calls given block with output' do
+      add_step(:alpha) { |_| 'wow' }
+      add_step(:beta) { |_| 'output' }
+
+      expect { |b| run_operation.on_success(&b) }.to yield_control.once
+
+      run_operation.on_success do |output|
+        expect(output).to eq('output')
+      end
+    end
+  end
+
   # HELPERS
 
   # Defines a method in the Operation class
-  def add_operation_method(name, &block)
+  def add_operation_method(name, klass = operation_klass, &block)
     block ||= ->(_) { nil }
-    operation_klass.class_exec do
+    klass.class_exec do
       define_method(name, &block)
     end
   end
 
   # Adds a step to the operation with an optional definition.
-  def add_step(name, &block)
-    operation_klass.step(name)
-    add_operation_method(name, &block)
+  def add_step(name, klass = operation_klass, &block)
+    klass.step(name)
+    add_operation_method(name, klass, &block)
   end
 
   def add_failed_step(name)

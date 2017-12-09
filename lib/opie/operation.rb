@@ -1,13 +1,12 @@
-require 'dry-container'
-
 module Opie
   class Operation
-    FAIL = '__STEP_FAILED__'.freeze
-
     attr_reader :failure, :output
 
-    def call(input = nil)
-      execute_steps(input)
+    def call(input = nil, &block)
+      execute_steps(input, &block)
+      if block_given?
+        return yield self
+      end
       self
     end
 
@@ -15,8 +14,16 @@ module Opie
       !success?
     end
 
+    def on_fail
+      yield failure if block_given? && failure?
+    end
+
     def success?
       failure.nil?
+    end
+
+    def on_success
+      yield output if block_given? && success?
     end
 
     def failures
@@ -24,23 +31,17 @@ module Opie
     end
 
     class << self
-      def call(input = nil)
-        new.call(input)
+      def call(input = nil, &block)
+        new.call(input, &block)
       end
 
       def step(name)
-        add_step(name)
+        @steps ||= []
+        @steps << name
       end
 
       def step_list
         @steps ||= []
-      end
-
-      private
-
-      def add_step(name)
-        @steps ||= []
-        @steps << name
       end
     end
 
@@ -50,16 +51,40 @@ module Opie
       step_list = self.class.step_list
 
       next_input = input
-      step_list.find do |name|
-        next_input = public_send(name, next_input)
-        failure?
+      step_list.each do |name|
+        next_input = if name.is_a?(String) || name.is_a?(Symbol)
+                       execute_step(name, next_input)
+                     else
+                       execute_operation(name, next_input)
+                     end
       end
-
       @output = next_input if success?
+    rescue FailureError => e
+      @failure = e.failure
+    end
+
+    def execute_step(name, input)
+      next_step = method(name)
+      if input.is_a?(Array) && (next_step.arity == input.count || next_step.arity == -1)
+        public_send(name, *input)
+      else
+        public_send(name, input)
+      end
+    end
+
+    def execute_operation(klass, input)
+      klass.call(input) do |res|
+        res.on_success do |output|
+          return output
+        end
+        res.on_fail do |err|
+          raise FailureError, err
+        end
+      end
     end
 
     def fail(type, data = nil)
-      @failure = Failure.new(type, data)
+      raise FailureError, Failure.new(type, data)
     end
   end
 end
