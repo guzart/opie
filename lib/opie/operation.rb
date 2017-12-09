@@ -49,12 +49,16 @@ module Opie
       step_list = self.class.step_list
 
       next_input = input
-      step_list.find do |name|
-        next_input = execute_step(name, next_input)
-        failure?
+      step_list.each do |name|
+        next_input = if name.is_a?(String) || name.is_a?(Symbol)
+                       execute_step(name, next_input)
+                     else
+                       execute_operation(name, next_input)
+                     end
       end
-
       @output = next_input if success?
+    rescue FailureError => e
+      @failure = e.failure
     end
 
     def execute_step(name, input)
@@ -64,8 +68,17 @@ module Opie
       else
         public_send(name, input)
       end
-    rescue FailureError => e
-      @failure = e.failure
+    end
+
+    def execute_operation(klass, input)
+      klass.call(input) do |res|
+        res.on_success do |output|
+          return output
+        end
+        res.on_fail do |err|
+          raise FailureError, err
+        end
+      end
     end
 
     def fail(type, data = nil)
