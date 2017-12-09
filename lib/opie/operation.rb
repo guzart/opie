@@ -34,18 +34,12 @@ module Opie
       end
 
       def step(name)
-        add_step(name)
+        @steps ||= []
+        @steps << name
       end
 
       def step_list
         @steps ||= []
-      end
-
-      private
-
-      def add_step(name)
-        @steps ||= []
-        @steps << name
       end
     end
 
