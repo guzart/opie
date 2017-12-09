@@ -20,13 +20,13 @@ class Todos::CompleteTodo < Opie::Operation
 
   def find_todo(todo_id)
     todo = Todo.find_by(id: todo_id)
-    return fail(:not_found, "Could not find the Todo using id: #{todo_id}") unless todo
+    fail(:not_found, "Could not find the Todo using id: #{todo_id}") unless todo
     todo
   end
 
   def mark_as_complete(todo)
     success = todo.update(completed_at: Time.zone.now)
-    return fail(:update) unless success
+    fail(:update) unless success
     todo
   end
 end
@@ -56,7 +56,7 @@ end
 
 **Real world example:**
 
-Imagine yourself in the context of a [habit tracker](https://github.com/isoron/uhabits), wanting to 
+Imagine yourself in the context of a [habit tracker](https://github.com/isoron/uhabits), wanting to
 add a new habit to track.
 
 ```ruby
@@ -80,8 +80,8 @@ class HabitsController < ApplicationController
 
   # the HTTP status depends on the error type, which separating the domain from the infrastructure
   def error_http_status(error_type)
-    case(error_type) 
-    when :validation then :unprocessable_entity 
+    case(error_type)
+    when :validation then :unprocessable_entity
     when :not_found then :not_found
     else :server_error
     end
@@ -124,7 +124,7 @@ module People
         [:weekly, :five_times_per_week, :four_times_per_week, :three_times_per_week].includes?(value)
       end
     end
-    
+
     required(:person_id).filled(:int?, gt?: 0)
     required(:name).filled(:str?)
     required(:description).maybe(:str?)
@@ -133,7 +133,7 @@ module People
   end
 
   # the operation logic starts
-  class AddHabit < Opie::Operation 
+  class AddHabit < Opie::Operation
     # inject dependencies, more flexible than ruby's global namespace
     include Import[
       habit_repo: 'repositories.habit',
@@ -150,14 +150,14 @@ module People
     # receives the first input
     def validate(params)
       schema = AddHabitSchema.(params)
-      return fail(:validation, schema.errors) if schema.failure?
+      fail(:validation, schema.errors) if schema.failure?
       schema.output
     end
 
     # if it's valid then find the person (tenant)
     def find_person(params)
       person = person_repo.find(params[:person_id])
-      return fail(:repository, 'We could not find your account') unless person
+      fail(:repository, 'We could not find your account') unless person
       params.merge(person: person)
     end
 
@@ -192,7 +192,7 @@ The `Opie::Operation` API:
   validation error
 
 Internal API:
-  * `#fail(error_type: Symbol, error_data: *) -> Hash` 
+  * `#fail(error_type: Symbol, error_data: *) -> Hash`
 
 _Tentative API_
 
@@ -237,4 +237,3 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/guzart
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-

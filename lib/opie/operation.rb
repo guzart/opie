@@ -61,10 +61,12 @@ module Opie
       else
         public_send(name, input)
       end
+    rescue FailureError => e
+      @failure = e.failure
     end
 
     def fail(type, data = nil)
-      @failure = Failure.new(type, data)
+      raise FailureError, Failure.new(type, data)
     end
   end
 end
