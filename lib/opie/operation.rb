@@ -4,7 +4,9 @@ module Opie
 
     def call(input = nil, &block)
       execute_steps(input, &block)
-      yield self if block_given?
+      if block_given?
+        return yield self
+      end
       self
     end
 
