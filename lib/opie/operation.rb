@@ -1,5 +1,3 @@
-require 'dry-container'
-
 module Opie
   class Operation
     FAIL = '__STEP_FAILED__'.freeze
