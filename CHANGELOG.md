@@ -1,3 +1,15 @@
+# CHANGELOG
+
+<a name="1.1.0"></a>
+# [1.1.0](https://github.com/guzart/opie/compare/v1.0.0...v1.1.0) (2017-12-16)
+
+
+### Features
+
+* Add support for optional context argument ([b4938ed](https://github.com/guzart/opie/commit/b4938ed))
+
+
+
 <a name="1.0.0"></a>
 # [1.0.0](https://github.com/guzart/opie/compare/v0.1.0...v1.0.0) (2017-03-20)
 
