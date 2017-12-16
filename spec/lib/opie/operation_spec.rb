@@ -10,7 +10,7 @@ RSpec.describe Opie::Operation do
 
   describe '::step' do
     it 'defines a method to be called when running the operation' do
-      add_operation_method(:alpha)
+      define_step(:alpha)
 
       operation_klass.step(:alpha)
       expect(operation).to receive(:alpha)
@@ -26,6 +26,25 @@ RSpec.describe Opie::Operation do
       expect(operation).to receive(:alpha).with(message: 'hello')
 
       operation.call(message: 'hello')
+    end
+
+    it 'accepts a context as a second parameter' do
+      ctx = { current_user: 'admin' }
+      add_step(:alpha)
+
+      operation.call('hello', ctx)
+
+      expect(operation.context).to be(ctx)
+    end
+
+    it 'passes the context to the method if the method takes a second argument' do
+      add_step_definition(:alpha) do
+        def alpha(_input, context)
+          raise 'Context was not given' if context[:current_user] != 'admin'
+        end
+      end
+
+      operation.call('hello', current_user: 'admin')
     end
 
     it 'executes the step methods in the order they are defined' do
@@ -190,18 +209,26 @@ RSpec.describe Opie::Operation do
 
   # HELPERS
 
-  # Defines a method in the Operation class
-  def add_operation_method(name, &block)
-    block ||= ->(_) { nil }
-    operation_klass.class_exec do
-      define_method(name, &block)
+  def define_step(name = nil, &block)
+    if name
+      block ||= ->(_) { nil }
+      operation_klass.class_exec do
+        define_method(name, &block)
+      end
+    else
+      operation_klass.class_exec(&block)
     end
+  end
+
+  def add_step_definition(name, &block)
+    operation_klass.step(name)
+    define_step(&block)
   end
 
   # Adds a step to the operation with an optional definition.
   def add_step(name, &block)
     operation_klass.step(name)
-    add_operation_method(name, &block)
+    define_step(name, &block)
   end
 
   def add_failed_step(name)

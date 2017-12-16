@@ -2,19 +2,20 @@ module Opie
   class Operation
     FAIL = '__STEP_FAILED__'.freeze
 
-    attr_reader :failure, :output
+    attr_reader :failure, :output, :context
 
-    def call(input = nil)
+    def call(input = nil, context = nil)
+      @context = context
       execute_steps(input)
       self
     end
 
     def failure?
-      !success?
+      failure
     end
 
     def success?
-      failure.nil?
+      !failure?
     end
 
     def failures
@@ -22,8 +23,8 @@ module Opie
     end
 
     class << self
-      def call(input = nil)
-        new.call(input)
+      def call(input = nil, context = nil)
+        new.call(input, context)
       end
 
       def step(name)
@@ -49,11 +50,17 @@ module Opie
 
       next_input = input
       step_list.find do |name|
-        next_input = public_send(name, next_input)
+        next_input = execute_step(name, next_input)
         failure?
       end
 
       @output = next_input if success?
+    end
+
+    def execute_step(name, input)
+      args = [name, input]
+      args = args.push(context) if method(name).arity == 2
+      public_send(*args)
     end
 
     def fail(type, data = nil)

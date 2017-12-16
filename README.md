@@ -8,6 +8,35 @@
 **Opie gives you a simple API for creating Operations using the
 [Railsway oriented programming](https://vimeo.com/113707214) paradigm.**
 
+## API
+
+The `Opie::Operation` API:
+  * `::step(Symbol) -> void` indicates a method that is executed in the operation sequence
+  * `#success? -> Boolean` indicates  whether the operation was successful
+  * `#failure? -> Boolean` indicates  whether the operation was a failure
+  * `#failure -> Hash | nil` the erorr if the operation is a `failure?`, nil when it's a success
+  * `#failures -> Array<Hash> | nil` an array with all errors
+  * `#output -> *` if succcessful, it returns the operation final output validation error
+  * `#step_name(Any, Any?) -> Any` the step signature. First argument is the input and the second argument is an optional context
+
+Executing an operation:
+
+```ruby
+input = { first_name: 'John', last_name: 'McClane', email: 'john@example.com' }
+context = { current_user: 'admin' }
+
+CreateUserOperation.(input, context)
+```
+
+Internal API:
+  * `#fail(error_type: Symbol, error_data: *) -> Hash` 
+
+_Tentative API_
+
+  * `::step(Array<Symbol>) -> void` a series of methods to be called in parallel
+  * `::step(Opie::Step) -> void` an enforcer of a step signature which helps to compose other steps
+  * `::failure(Symbol) -> void` indicates the method that handles failures
+
 ## Usage
 
 **Simple Usage:**
@@ -66,7 +95,7 @@ class HabitsController < ApplicationController
   # POST /habits
   def create
     # run the `operation` – since it's a modification we can call it a `command`
-    result = People::AddHabit.(habit_params)
+    result = People::AddHabit.(habit_params, operation_context)
 
     # render response based on operation result
     if result.success?
@@ -81,6 +110,7 @@ class HabitsController < ApplicationController
   # the HTTP status depends on the error type, which separating the domain from the infrastructure
   def error_http_status(error_type)
     case(error_type) 
+    when :unauthorized then :unauthorized
     when :validation then :unprocessable_entity 
     when :not_found then :not_found
     else :server_error
@@ -96,6 +126,10 @@ class HabitsController < ApplicationController
       frequency: :three_times_per_week,
       color: 'DeepPink'
     }
+  end
+
+  def operation_context
+    { current_user: current_user }
   end
 end
 ```
@@ -142,10 +176,17 @@ module People
     ]
 
     # first step receives ::call first argument, then the output of the step is the argument of the next step
+    step :authorize
     step :validate
     step :find_person
     step :persist_habit
     step :send_event
+
+    def authorize(params, context)
+      # Authorize using Pundit's policy api
+      return fail(:unauthorized) if HabitPolicy.new(context, Habit).add?
+      params
+    end
 
     # receives the first input
     def validate(params)
@@ -179,26 +220,6 @@ module People
   end
 end
 ```
-
-## API
-
-The `Opie::Operation` API:
-  * `::step(Symbol) -> void` indicates a method that is executed in the operation sequence
-  * `#success? -> Boolean` indicates  whether the operation was successful
-  * `#failure? -> Boolean` indicates  whether the operation was a failure
-  * `#failure -> Hash | nil` the erorr if the operation is a `failure?`, nil when it's a success
-  * `#failures -> Array<Hash> | nil` an array with all errors
-  * `#output -> *` if succcessful, it returns the operation final output
-  validation error
-
-Internal API:
-  * `#fail(error_type: Symbol, error_data: *) -> Hash` 
-
-_Tentative API_
-
-  * `::step(Array<Symbol>) -> void` a series of methods to be called in parallel
-  * `::step(Opie::Step) -> void` an enforcer of a step signature which helps to compose other steps
-  * `::failure(Symbol) -> void` indicates the method that handles failures
 
 ## Installation
 
