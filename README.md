@@ -14,10 +14,13 @@ The `Opie::Operation` API:
   * `::step(Symbol) -> void` indicates a method that is executed in the operation sequence
   * `#success? -> Boolean` indicates  whether the operation was successful
   * `#failure? -> Boolean` indicates  whether the operation was a failure
-  * `#failure -> Hash | nil` the erorr if the operation is a `failure?`, nil when it's a success
-  * `#failures -> Array<Hash> | nil` an array with all errors
-  * `#output -> *` if succcessful, it returns the operation final output validation error
+  * `#failure -> Opie::Failure | nil` the failure if the operation is a `failure?`, nil when it's a success
+  * `#failures -> Array<Opie::Failure> | nil` an array with all failures
+  * `#output -> * | nil` the operation's last step return value, nil when the operation fails
+
+Internal API:
   * `#step_name(Any, Any?) -> Any` the step signature. First argument is the input and the second argument is an optional context
+  * `#fail(error_type: Symbol, error_data: *) -> Opie::Failure` used inside the steps to indicate that the operation has failed
 
 Executing an operation:
 
@@ -28,14 +31,11 @@ context = { current_user: 'admin' }
 CreateUserOperation.(input, context)
 ```
 
-Internal API:
-  * `#fail(error_type: Symbol, error_data: *) -> Hash` 
-
 _Tentative API_
 
   * `::step(Array<Symbol>) -> void` a series of methods to be called in parallel
   * `::step(Opie::Step) -> void` an enforcer of a step signature which helps to compose other steps
-  * `::failure(Symbol) -> void` indicates the method that handles failures
+  * `::failure(Symbol) -> void` indicates a custom method name to handle failures
 
 ## Usage
 
@@ -101,15 +101,19 @@ class HabitsController < ApplicationController
     if result.success?
       render status: :created, json: result.output
     else
-      render status: error_http_status(result.failure[:type]), json: { errors: [result.failure] }
+      render_operation_failure(result.failure)
     end
   end
 
   private
 
+  def render_operation_failure(failure)
+    render status: failure_http_status(failure.type), json: { errors: failure.data }
+  end
+
   # the HTTP status depends on the error type, which separating the domain from the infrastructure
-  def error_http_status(error_type)
-    case(error_type) 
+  def failure_http_status(type)
+    case(type)
     when :unauthorized then :unauthorized
     when :validation then :unprocessable_entity 
     when :not_found then :not_found
