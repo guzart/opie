@@ -3,6 +3,7 @@
 AllCops:
   Exclude:
     - 'spec/**/*'
+    - 'bin/*'
     - '*.gemspec'
   TargetRubyVersion: 2.3
 
