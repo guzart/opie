@@ -74,8 +74,8 @@ class TodosController < ApplicationController
   private
 
   def error_message(failure)
-    case failure[:type]
-      when :not_found then failure[:data]
+    case failure.type
+      when :not_found then failure.data
       when :update then 'We were unable to make the changes to your todo'
       else 'There was an unexpected error, sorry for the inconvenience'
     end
