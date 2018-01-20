@@ -1,3 +1,7 @@
+# TODO: The API should be something like:
+# case result.failure
+# when ValidationError then handle_validation(result.failure.errors)
+# when AuthorizationError then handle_authorization(result.failure.message)
 module Opie
   class Operation
     attr_reader :failure, :output, :context
@@ -9,15 +13,11 @@ module Opie
     end
 
     def failure?
-      failure
+      !success?
     end
 
     def success?
-      !failure?
-    end
-
-    def failures
-      [failure].compact
+      !failure
     end
 
     class << self
@@ -57,14 +57,16 @@ module Opie
       args = [name, input]
       args = args.push(context) if method(name).arity == 2
       public_send(*args)
+    rescue Failure => error
+      @failure = error
     end
 
     def step_list
       self.class.step_list
     end
 
-    def fail(type, data = nil)
-      @failure = Failure.new(type, data)
+    def fail_step(message = 'failure')
+      raise Failure, message
     end
   end
 end

@@ -1,18 +1,10 @@
 module Opie
-  class Failure
-    attr_reader :data, :type
+  class Failure < StandardError
+    attr_reader :data
 
-    def initialize(type, data = nil)
-      @type = type
-      @data = data
-    end
-
-    def ==(other)
-      type == other.type && data == other.data
-    end
-
-    def hash
-      [type, (data || '').to_sym].hash
+    def initialize(message)
+      @data = message
+      super(message)
     end
   end
 end

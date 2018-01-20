@@ -146,61 +146,34 @@ RSpec.describe Opie::Operation do
     end
   end
 
-  describe '#failures' do
-    it 'returns an array of the operation failures' do
-      failure = Opie::Failure.new(:oh_no, 'boo hoo')
-      add_step(:alpha) { |_| 'wow' }
-      add_step(:beta) { |_| fail(failure.type, failure.data) }
-
-      expect(run_operation.failures).to eq([failure])
-    end
-
-    it 'returns an empty array if the operation is successful' do
-      add_step(:alpha) { |_| 'wow' }
-      expect(run_operation.failures).to eq([])
-    end
-  end
-
   describe 'helper methods' do
-    describe '#fail' do
+    describe '#fail_step' do
       it 'is a private method' do
-        expect(operation).not_to respond_to(:fail)
+        expect(operation).not_to respond_to(:fail_step)
       end
 
-      it 'assigns the first parameter as the failure.type' do
+      it 'assigns the first parameter as the failure.data' do
         add_step(:alpha) do |_input|
-          fail(:not_found)
+          fail_step(:not_found)
         end
 
         run_operation
-        expect(operation.failure.type).to eq(:not_found)
-      end
-
-      it 'assigns the second parameter as the failure.data' do
-        add_step(:alpha) { |_input| fail(:who_cares, 'This is a really bad error') }
-
-        run_operation
-        expect(operation.failure.data).to eq('This is a really bad error')
-      end
-
-      it 'requires a error type' do
-        add_step(:alpha) { |_input| fail }
-        expect { run_operation }.to raise_error(ArgumentError)
+        expect(operation.failure.data).to eq(:not_found)
       end
 
       it 'optionally takes error data' do
-        add_step(:alpha) { |_input| fail(:oopsy) }
+        add_step(:alpha) { |_input| fail_step(:oopsy) }
         expect { run_operation }.not_to raise_error
       end
 
       it 'makes #failure? return true' do
-        add_step(:alpha) { |_input| fail(:oopsy) }
+        add_step(:alpha) { |_input| fail_step(:oopsy) }
         run_operation
         expect(operation).to be_failure
       end
 
       it 'makes #success? return false' do
-        add_step(:alpha) { |_input| fail(:oopsy) }
+        add_step(:alpha) { |_input| fail_step(:oopsy) }
         run_operation
         expect(operation).not_to be_success
       end
@@ -233,7 +206,7 @@ RSpec.describe Opie::Operation do
 
   def add_failed_step(name)
     add_step(name) do |_|
-      fail(:oops)
+      fail_step
     end
   end
 
