@@ -17,6 +17,20 @@ RSpec.describe Opie::Operation do
 
       run_operation
     end
+
+    it 'accepts another operation' do
+      boxing_operation_klass = Class.new(Opie::Operation)
+      boxing_operation_klass.class_exec do
+        step :array_box
+
+        def array_box(input)
+          [input]
+        end
+      end
+
+      add_step(boxing_operation_klass)
+      expect(run_operation('hello').output).to eq(['hello'])
+    end
   end
 
   describe '#call' do
@@ -189,6 +203,8 @@ RSpec.describe Opie::Operation do
   # HELPERS
 
   def define_step(name = nil, &block)
+    return if name.is_a?(Class)
+
     if name
       block ||= ->(_) { nil }
       operation_klass.class_exec do

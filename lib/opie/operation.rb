@@ -54,11 +54,27 @@ module Opie
     end
 
     def execute_step(name, input)
+      if name.is_a?(Class)
+        execute_operation_step(name, input)
+      else
+        execute_method_step(name, input)
+      end
+    rescue => error
+      @failure = error
+    end
+
+    def execute_method_step(name, input)
       args = [name, input]
       args = args.push(context) if method(name).arity == 2
       public_send(*args)
-    rescue => error
-      @failure = error
+    end
+
+    def execute_operation_step(operation, input)
+      args = ['call', input]
+      args = args.push(context) if method('call').arity == 2
+      result = operation.public_send(*args)
+      raise result.failure if result.failure?
+      result.output
     end
 
     def step_list
