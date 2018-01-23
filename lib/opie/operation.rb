@@ -57,7 +57,7 @@ module Opie
       args = [name, input]
       args = args.push(context) if method(name).arity == 2
       public_send(*args)
-    rescue Failure => error
+    rescue => error
       @failure = error
     end
 

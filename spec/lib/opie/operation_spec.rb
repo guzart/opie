@@ -119,6 +119,12 @@ RSpec.describe Opie::Operation do
       expect(result).to be_failure
     end
 
+    it 'returns true when a step raises an error' do
+      add_step(:alpha) { |_| raise 'Oh no!' }
+      result = run_operation
+      expect(result).to be_failure
+    end
+
     it 'returns false when none of the step fail' do
       add_step(:alpha) { |_| nil }
       add_step(:beta)
