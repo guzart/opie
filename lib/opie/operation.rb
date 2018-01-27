@@ -70,8 +70,7 @@ module Opie
     end
 
     def execute_operation_step(operation, input)
-      args = ['call', input]
-      args = args.push(context) if method('call').arity == 2
+      args = ['call', input, context]
       result = operation.public_send(*args)
       raise result.failure if result.failure?
       result.output
